@@ -1,0 +1,1247 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jarvis · Sistema Pessoal</title>
+  <style>
+    :root {
+      --theme: #ff5547;
+      --theme-bright: #ff7a6e;
+      --violet: #8b7cff;
+      --cyan: #2dd4ff;
+      --bg: #07080d;
+      --panel: rgba(16, 18, 28, .78);
+      --panel-strong: rgba(21, 23, 34, .95);
+      --line: rgba(255, 255, 255, .1);
+      --muted: #8e94a7;
+      --text: #f4f5fa;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(255, 85, 71, .13), transparent 28rem),
+        radial-gradient(circle at 85% 90%, rgba(139, 124, 255, .1), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .18;
+      background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, black, transparent 80%);
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+    .screen.is-hidden { display: none; }
+
+    #boot {
+      position: fixed;
+      z-index: 30;
+      inset: 0;
+      background: #05060a;
+      transition: opacity .8s ease, visibility .8s ease;
+    }
+    #boot.is-done { opacity: 0; visibility: hidden; pointer-events: none; }
+    .boot-inner { width: min(680px, 100%); text-align: center; }
+    .system-name {
+      margin: 0;
+      font-family: var(--mono);
+      font-size: clamp(3.6rem, 15vw, 9rem);
+      line-height: .9;
+      letter-spacing: -.1em;
+      text-transform: uppercase;
+      background: linear-gradient(120deg, var(--theme), #e26dff 75%, var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 42px rgba(255, 85, 71, .28);
+    }
+    .boot-rule {
+      height: 1px;
+      margin: 26px 0 20px;
+      border: 0;
+      background: linear-gradient(90deg, transparent, var(--theme), var(--violet), transparent);
+    }
+    .boot-status {
+      margin: 0;
+      color: #dfe2ed;
+      font-family: var(--mono);
+      font-size: .73rem;
+      letter-spacing: .24em;
+      animation: blink 1.1s steps(2, jump-none) infinite;
+    }
+    .boot-version {
+      margin: 18px 0 0;
+      color: #656b7d;
+      font: .65rem var(--mono);
+      letter-spacing: .18em;
+    }
+
+    #activation {
+      min-height: 100vh;
+      background: radial-gradient(circle, rgba(255, 85, 71, .08), transparent 34rem);
+    }
+    .activation-card {
+      width: min(580px, 100%);
+      text-align: center;
+    }
+    .activation-card .system-name { font-size: clamp(4.2rem, 18vw, 10rem); }
+    .activation-kicker {
+      color: var(--muted);
+      font: .68rem var(--mono);
+      letter-spacing: .28em;
+      margin: 28px 0;
+    }
+    .activate-button {
+      position: relative;
+      border: 1px solid var(--theme);
+      background: rgba(255, 85, 71, .08);
+      color: #fff;
+      min-width: min(320px, 100%);
+      padding: 17px 24px;
+      border-radius: 999px;
+      font: 700 .82rem var(--mono);
+      letter-spacing: .08em;
+      box-shadow: 0 0 0 0 rgba(255, 85, 71, .4);
+      transition: background .25s, box-shadow .25s, transform .25s;
+    }
+    .activate-button:hover {
+      background: var(--theme);
+      box-shadow: 0 0 32px rgba(255, 85, 71, .34);
+      transform: translateY(-2px);
+    }
+    .activation-hint {
+      margin: 18px 0 0;
+      color: #747b8d;
+      font-size: .7rem;
+      letter-spacing: .18em;
+    }
+
+    #app {
+      display: none;
+      width: min(1220px, 100%);
+      margin: 0 auto;
+      padding: 24px clamp(14px, 3vw, 42px) 50px;
+    }
+    #app.is-visible { display: block; animation: app-in .8s ease both; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 9px 0 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .mini-orb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff4f0 0 3%, var(--theme-bright) 9%, var(--theme) 31%, #680d14 72%);
+      box-shadow: 0 0 18px rgba(255, 85, 71, .55);
+    }
+    .brand-name {
+      margin: 0;
+      font: 700 1.05rem var(--mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .brand-meta {
+      color: var(--muted);
+      font: .62rem var(--mono);
+      letter-spacing: .1em;
+      margin-top: 4px;
+    }
+    .key-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: min(380px, 52vw);
+    }
+    .key-area label {
+      color: #777e91;
+      font: .62rem var(--mono);
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+    .key-input {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(255,255,255,.04);
+      outline: 0;
+      padding: 9px 11px;
+      font: .7rem var(--mono);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .key-input:focus { border-color: var(--theme); box-shadow: 0 0 0 3px rgba(255, 85, 71, .12); }
+    .save-key {
+      color: var(--theme-bright);
+      border: 1px solid rgba(255, 85, 71, .42);
+      background: rgba(255, 85, 71, .08);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font: .62rem var(--mono);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.03fr) minmax(330px, .97fr);
+      align-items: center;
+      gap: clamp(20px, 5vw, 76px);
+      min-height: 410px;
+      padding: 34px 0 18px;
+    }
+    .hero-copy { max-width: 500px; }
+    .eyebrow {
+      margin: 0 0 13px;
+      color: var(--theme-bright);
+      font: .68rem var(--mono);
+      letter-spacing: .2em;
+    }
+    .hero-title {
+      margin: 0;
+      max-width: 650px;
+      font-size: clamp(2.4rem, 6vw, 5rem);
+      letter-spacing: -.07em;
+      line-height: .96;
+    }
+    .hero-title span {
+      color: transparent;
+      background: linear-gradient(120deg, #fff 18%, var(--theme-bright), var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+    .hero-description {
+      max-width: 430px;
+      margin: 22px 0 0;
+      color: #a1a7b8;
+      font-size: .98rem;
+      line-height: 1.7;
+    }
+    .assistant-lines {
+      display: grid;
+      gap: 9px;
+      margin-top: 25px;
+      font-family: var(--mono);
+      font-size: .73rem;
+    }
+    .line-row { display: flex; gap: 10px; min-width: 0; }
+    .line-label { color: var(--theme-bright); width: 78px; flex: 0 0 auto; }
+    .line-value { color: #d2d5df; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .line-value.response { color: #aeb6ff; }
+    .orb-stage {
+      display: grid;
+      place-items: center;
+      min-height: 360px;
+      position: relative;
+    }
+    .orb-stage::before, .orb-stage::after {
+      content: "";
+      position: absolute;
+      border: 1px solid rgba(255, 85, 71, .12);
+      border-radius: 50%;
+      width: 260px;
+      height: 260px;
+      animation: orbit 12s linear infinite;
+    }
+    .orb-stage::after { width: 330px; height: 150px; transform: rotate(-24deg); animation-duration: 17s; animation-direction: reverse; }
+    .orb-wrap { position: relative; width: 220px; height: 220px; display: grid; place-items: center; }
+    .orb-wrap::before, .orb-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 17px;
+      border: 1px solid rgba(255, 85, 71, .34);
+      border-radius: 50%;
+      animation: ring-breathe 3.2s ease-in-out infinite;
+    }
+    .orb-wrap::after { inset: -2px; border-color: rgba(139, 124, 255, .22); animation-delay: -1.2s; }
+    .orb {
+      position: relative;
+      z-index: 2;
+      width: 126px;
+      height: 126px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 162, 151, .9);
+      background: radial-gradient(circle at 34% 28%, #fff4f0 0 2%, #ff9d90 7%, var(--theme) 27%, #9c161d 55%, #2b070d 83%);
+      box-shadow: 0 0 16px var(--theme), 0 0 58px rgba(255, 85, 71, .42), inset 0 0 30px rgba(255,255,255,.22);
+      transition: transform .35s ease, box-shadow .35s ease;
+      isolation: isolate;
+    }
+    .orb::before, .orb::after {
+      content: "";
+      position: absolute;
+      inset: -18px;
+      border: 1px solid rgba(255, 85, 71, .48);
+      border-radius: 50%;
+      animation: orb-wave 2.6s ease-out infinite;
+    }
+    .orb::after { inset: -31px; opacity: 0; animation-delay: .8s; }
+    .orb:hover { transform: scale(1.05); }
+    [data-state="thinking"] .orb { animation: fast-pulse .75s ease-in-out infinite; }
+    [data-state="speaking"] .orb { box-shadow: 0 0 25px var(--theme), 0 0 82px rgba(255, 85, 71, .58), inset 0 0 34px rgba(255,255,255,.3); }
+    [data-state="listening"] .orb::before { animation-duration: 1.25s; }
+    .orb-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: #757d92;
+      font: .63rem var(--mono);
+      letter-spacing: .2em;
+    }
+    .status {
+      margin: 8px 0 0;
+      color: var(--theme-bright);
+      text-align: center;
+      font: .67rem var(--mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .command-bar {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: min(720px, 100%);
+      margin: 0 auto 34px;
+      padding: 7px;
+      border: 1px solid var(--line);
+      background: rgba(17, 19, 29, .72);
+      border-radius: 14px;
+      box-shadow: 0 20px 55px rgba(0,0,0,.18);
+    }
+    .command-input {
+      flex: 1;
+      min-width: 0;
+      color: var(--text);
+      border: 0;
+      outline: 0;
+      background: transparent;
+      padding: 10px 12px;
+      font-size: .91rem;
+    }
+    .command-input::placeholder { color: #6d7385; }
+    .round-button {
+      flex: 0 0 auto;
+      width: 37px;
+      height: 37px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: #dce0ee;
+      background: rgba(255,255,255,.05);
+      transition: background .2s, color .2s, border-color .2s;
+    }
+    .round-button:hover { color: #fff; border-color: var(--theme); background: rgba(255, 85, 71, .17); }
+    .round-button.stop { color: #ff9a90; }
+
+    .brain-section {
+      border-top: 1px solid var(--line);
+      padding-top: 24px;
+    }
+    .brain-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 11px;
+    }
+    .brain-title {
+      margin: 0;
+      font: 700 .9rem var(--mono);
+      letter-spacing: .11em;
+    }
+    .brain-subtitle {
+      margin: 6px 0 0;
+      color: #747b8e;
+      font-size: .74rem;
+    }
+    .brain-actions { display: flex; align-items: center; gap: 9px; }
+    .brain-count { color: var(--theme-bright); font: .67rem var(--mono); white-space: nowrap; }
+    .small-action {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #dfe2ed;
+      background: rgba(255,255,255,.04);
+      min-width: 31px;
+      height: 31px;
+      font-size: 1rem;
+    }
+    .small-action:hover { border-color: var(--theme); color: var(--theme-bright); }
+    .brain-canvas {
+      min-height: 370px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(139, 124, 255, .08), transparent 19rem),
+        linear-gradient(145deg, rgba(16, 17, 28, .95), rgba(8, 10, 17, .75));
+    }
+    .brain-canvas svg { display: block; width: 100%; height: auto; min-height: 370px; }
+    .brain-node { cursor: pointer; }
+    .brain-node:hover .node-core { stroke: #fff; stroke-width: 3; }
+    .node-label { fill: #e2e5f0; font: 600 13px var(--sans); text-anchor: middle; pointer-events: none; }
+    .node-area { fill: #7f879b; font: 10px var(--mono); text-anchor: middle; pointer-events: none; }
+    .node-ring { fill: none; opacity: .48; transform-box: fill-box; transform-origin: center; animation: svg-breathe 2.6s ease-in-out infinite; }
+    .node-flash .node-ring { animation: node-flash 1s ease both; }
+    .brain-legend {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 12px;
+      min-height: 28px;
+    }
+    .legend-items { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; color: #8990a3; font-size: .68rem; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .injected { color: #64e3a7; font: .65rem var(--mono); text-align: right; }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      place-items: center;
+      padding: 20px;
+      background: rgba(2, 3, 7, .76);
+      backdrop-filter: blur(9px);
+    }
+    .modal-backdrop.is-open { display: grid; }
+    .modal {
+      width: min(520px, 100%);
+      padding: 22px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 16px;
+      background: var(--panel-strong);
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .modal-title { margin: 0; font: 700 .88rem var(--mono); letter-spacing: .1em; }
+    .modal-close { border: 0; color: #aeb4c5; background: transparent; font-size: 1.35rem; }
+    .form-field { display: grid; gap: 7px; margin-bottom: 15px; }
+    .form-field label { color: #8d94a7; font: .65rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .form-field input, .form-field select, .form-field textarea {
+      width: 100%;
+      resize: vertical;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: 0;
+      background: rgba(255,255,255,.045);
+      padding: 10px 11px;
+      font-size: .88rem;
+    }
+    .form-field textarea { min-height: 110px; line-height: 1.5; }
+    .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--theme); }
+    .modal-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; }
+    .modal-button {
+      border: 1px solid var(--theme);
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(255,85,71,.16);
+      padding: 10px 14px;
+      font: .7rem var(--mono);
+    }
+    .modal-button:hover { background: var(--theme); }
+    .modal-button.delete { color: #ff9b91; border-color: rgba(255, 85, 71, .38); background: transparent; }
+
+    .toast {
+      position: fixed;
+      z-index: 40;
+      right: 20px;
+      bottom: 20px;
+      max-width: min(360px, calc(100vw - 40px));
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 85, 71, .45);
+      border-radius: 9px;
+      color: #fff;
+      background: rgba(30, 13, 18, .95);
+      box-shadow: 0 10px 34px rgba(0,0,0,.35);
+      font: .7rem var(--mono);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .25s, transform .25s;
+    }
+    .toast.is-visible { opacity: 1; transform: translateY(0); }
+
+    @keyframes blink { 50% { opacity: .28; } }
+    @keyframes app-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    @keyframes orbit { to { transform: rotate(360deg); } }
+    @keyframes ring-breathe { 0%, 100% { transform: scale(.88); opacity: .32; } 50% { transform: scale(1.12); opacity: .8; } }
+    @keyframes orb-wave { 0% { transform: scale(.7); opacity: .72; } 85%, 100% { transform: scale(1.45); opacity: 0; } }
+    @keyframes fast-pulse { 50% { transform: scale(1.1); } }
+    @keyframes svg-breathe { 0%, 100% { opacity: .28; transform: scale(.9); } 50% { opacity: .72; transform: scale(1.17); } }
+    @keyframes node-flash { 0% { opacity: 1; transform: scale(.8); } 45% { opacity: 1; transform: scale(1.8); } 100% { opacity: .45; transform: scale(1); } }
+
+    @media (max-width: 760px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .key-area { width: 100%; min-width: 0; }
+      .hero { grid-template-columns: 1fr; gap: 0; padding-top: 24px; }
+      .hero-copy { order: 1; max-width: none; }
+      .orb-stage { order: 0; min-height: 300px; transform: scale(.82); margin: -16px 0 -10px; }
+      .hero-title { font-size: clamp(2.5rem, 14vw, 4.2rem); }
+      .brain-head { align-items: flex-start; flex-direction: column; }
+      .brain-actions { width: 100%; justify-content: space-between; }
+      .brain-legend { align-items: flex-start; flex-direction: column; }
+      .injected { text-align: left; }
+      .command-bar { margin-bottom: 26px; }
+    }
+    @media (max-width: 420px) {
+      .screen { padding: 18px; }
+      .line-label { width: 63px; }
+      .brain-canvas, .brain-canvas svg { min-height: 330px; }
+      .key-area { align-items: stretch; flex-wrap: wrap; }
+      .key-area label { width: 100%; }
+      .save-key { padding-inline: 9px; }
+    }
+  </style>
+</head>
+<body>
+  <section id="boot" class="screen" aria-label="Inicialização">
+    <div class="boot-inner">
+      <h1 class="system-name">JARVIS</h1>
+      <hr class="boot-rule">
+      <p class="boot-status">SINCRONIZANDO DADOS...</p>
+      <p class="boot-version">v5.0 · REBUILD</p>
+    </div>
+  </section>
+
+  <section id="activation" class="screen" aria-label="Ativação do sistema">
+    <div class="activation-card">
+      <h1 class="system-name">JARVIS</h1>
+      <p class="activation-kicker">PROTOCOLO PESSOAL · SECOND BRAIN ONLINE</p>
+      <button id="activateButton" class="activate-button">► ATIVAR SISTEMA</button>
+      <p class="activation-hint">CLIQUE PARA INICIAR</p>
+    </div>
+  </section>
+
+  <main id="app" aria-live="polite">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <span class="mini-orb" aria-hidden="true"></span>
+        <div>
+          <h1 class="brand-name">JARVIS</h1>
+          <div class="brand-meta">PROTOCOLO PESSOAL · v5.0</div>
+        </div>
+      </div>
+      <div class="key-area">
+        <label for="keyInput">CLAUDE API KEY</label>
+        <input id="keyInput" class="key-input" type="password" autocomplete="off" placeholder="Cole sua chave aqui">
+        <button id="saveKeyButton" class="save-key">SALVAR</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">SISTEMAS ONLINE · ESCUTA CONTÍNUA</p>
+        <h2 class="hero-title">Olá, <span>Eve.</span><br>Estou ouvindo.</h2>
+        <p class="hero-description">Seu espaço pessoal de comando, memória e contexto. Fale naturalmente — o Second Brain acompanha a conversa.</p>
+        <div class="assistant-lines">
+          <div class="line-row"><span class="line-label">VOCÊ //</span><span id="userLine" class="line-value">Aguardando seu comando...</span></div>
+          <div class="line-row"><span class="line-label">JARVIS //</span><span id="assistantLine" class="line-value response">Sistemas online. Estou ouvindo, Eve.</span></div>
+        </div>
+      </div>
+      <div class="orb-stage" data-state="idle">
+        <div id="orbWrap" class="orb-wrap">
+          <button id="orb" class="orb" aria-label="Ativar escuta"></button>
+          <div class="orb-caption">REATOR CENTRAL</div>
+        </div>
+        <div id="status" class="status">OCIOSO · DIGA “EI JARVIS”</div>
+      </div>
+    </section>
+
+    <form id="commandForm" class="command-bar">
+      <input id="commandInput" class="command-input" autocomplete="off" placeholder="ou digite e tecle Enter">
+      <button id="micButton" class="round-button" type="button" title="Armar escuta" aria-label="Armar escuta">◉</button>
+      <button id="stopButton" class="round-button stop" type="button" title="Interromper fala" aria-label="Interromper fala">■</button>
+    </form>
+
+    <section class="brain-section">
+      <div class="brain-head">
+        <div>
+          <h2 class="brain-title">🧠 SECOND BRAIN</h2>
+          <p class="brain-subtitle">A memória viva de Eve, conectada ao protocolo.</p>
+        </div>
+        <div class="brain-actions">
+          <span id="brainCount" class="brain-count">0 notas · 0 áreas</span>
+          <button id="newNoteButton" class="small-action" title="Nova nota" aria-label="Nova nota">+</button>
+          <button id="reloadBrainButton" class="small-action" title="Recarregar notas" aria-label="Recarregar notas">↻</button>
+        </div>
+      </div>
+      <div id="brainCanvas" class="brain-canvas" aria-label="Grafo visual do Second Brain"></div>
+      <div class="brain-legend">
+        <div id="legendItems" class="legend-items"></div>
+        <div class="injected">✓ contexto injetado em todos os comandos do Jarvis</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="noteModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <form id="noteForm" class="modal">
+      <div class="modal-head">
+        <h2 id="modalTitle" class="modal-title">EDITAR NOTA</h2>
+        <button id="closeModalButton" class="modal-close" type="button" aria-label="Fechar">×</button>
+      </div>
+      <input id="noteId" type="hidden">
+      <div class="form-field">
+        <label for="noteTitle">Título</label>
+        <input id="noteTitle" maxlength="32" required>
+      </div>
+      <div class="form-field">
+        <label for="noteArea">Área</label>
+        <select id="noteArea"></select>
+      </div>
+      <div class="form-field">
+        <label for="noteBody">Conteúdo</label>
+        <textarea id="noteBody" maxlength="500" required></textarea>
+      </div>
+      <div class="modal-foot">
+        <button id="deleteNoteButton" class="modal-button delete" type="button">EXCLUIR</button>
+        <button class="modal-button" type="submit">SALVAR NOTA</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    "use strict";
+
+    const CONFIG = {
+      name: "Jarvis",
+      address: "Eve",
+      themeColor: "#ff5547",
+      persona: "formal britânico",
+      wakeWord: "ei jarvis",
+      voiceGender: "masculina",
+      model: "claude-sonnet-5"
+    };
+
+    const AREA = {
+      metas: { label: "Metas", color: "#fbbf24" },
+      trabalho: { label: "Carreira", color: "#ff5547" },
+      projetos: { label: "Projetos", color: "#8b7cff" },
+      financas: { label: "Finanças", color: "#f7931a" },
+      aprendizado: { label: "Aprendizado", color: "#2dd4ff" },
+      saude: { label: "Saúde", color: "#10b981" },
+      relacoes: { label: "Relações", color: "#ec4899" },
+      meta: { label: "Você", color: "#8a90a6" }
+    };
+
+    const NOTES = [
+      {
+        id: "nota-evellyn",
+        area: "meta",
+        title: "Evellyn",
+        body: "Evellyn tem 20 anos, mora no Ceará e tem personalidade forte e sarcástica."
+      },
+      {
+        id: "nota-estudos",
+        area: "meta",
+        title: "Estudos",
+        body: "Estuda Análise e Desenvolvimento de Sistemas na UniFanor e está no terceiro semestre."
+      },
+      {
+        id: "nota-estilo",
+        area: "meta",
+        title: "Estilo",
+        body: "É gótica e ama rock e nu metal."
+      },
+      {
+        id: "nota-trabalho",
+        area: "meta",
+        title: "Trabalho",
+        body: "Trabalha como assistente administrativa em um hospital."
+      },
+      {
+        id: "nota-ti",
+        area: "metas",
+        title: "TI",
+        body: "Quer terminar a faculdade e encontrar um emprego na área de tecnologia da informação."
+      }
+    ];
+
+    const REL = [
+      ["nota-ti", "nota-estudos"],
+      ["nota-ti", "nota-trabalho"],
+      ["nota-ti", "nota-evellyn"],
+      ["nota-estudos", "nota-trabalho"],
+      ["nota-estudos", "nota-evellyn"],
+      ["nota-trabalho", "nota-evellyn"],
+      ["nota-evellyn", "nota-estilo"],
+      ["nota-estudos", "nota-estilo"],
+      ["nota-ti", "nota-estilo"]
+    ];
+
+    const $ = (selector) => document.querySelector(selector);
+    const boot = $("#boot");
+    const activation = $("#activation");
+    const app = $("#app");
+    const activateButton = $("#activateButton");
+    const statusEl = $("#status");
+    const userLine = $("#userLine");
+    const assistantLine = $("#assistantLine");
+    const commandForm = $("#commandForm");
+    const commandInput = $("#commandInput");
+    const keyInput = $("#keyInput");
+    const toast = $("#toast");
+    const brainCanvas = $("#brainCanvas");
+    const brainCount = $("#brainCount");
+    const legendItems = $("#legendItems");
+    const noteModal = $("#noteModal");
+    const noteForm = $("#noteForm");
+
+    let notes = loadNotes();
+    let history = [];
+    let recognition = null;
+    let speechVoices = [];
+    let systemActive = false;
+    let busy = false;
+    let wakeDetected = false;
+    let toastTimer = 0;
+    let animationFrame = 0;
+    let graphEdges = [];
+    let pulseEpoch = performance.now();
+    let flashNoteId = "";
+
+    function normalize(value) {
+      return value
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function loadNotes() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("jarvis_notes") || "null");
+        if (Array.isArray(saved) && saved.length) return saved;
+      } catch (error) {
+        // Keep the embedded memory when local storage is unavailable.
+      }
+      return NOTES.map((note) => ({ ...note }));
+    }
+
+    function saveNotes() {
+      try { localStorage.setItem("jarvis_notes", JSON.stringify(notes)); } catch (error) {}
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("is-visible");
+      clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("is-visible"), 3800);
+    }
+
+    function setStatus(message, state = "idle") {
+      statusEl.textContent = message;
+      $(".orb-stage").dataset.state = state;
+    }
+
+    function setLastUser(text) {
+      userLine.textContent = text || "Aguardando seu comando...";
+    }
+
+    function setLastAssistant(text) {
+      assistantLine.textContent = text || "Aguardando resposta...";
+    }
+
+    function persistAndRender() {
+      saveNotes();
+      renderBrain();
+    }
+
+    function buildSystemPrompt() {
+      const grouped = Object.keys(AREA).map((area) => {
+        const areaNotes = notes.filter((note) => note.area === area);
+        if (!areaNotes.length) return "";
+        return `${AREA[area].label}:\n${areaNotes.map((note) => `- ${note.title}: ${note.body}`).join("\n")}`;
+      }).filter(Boolean).join("\n\n");
+
+      return [
+        `Você é ${CONFIG.name}, um assistente pessoal de voz para ${CONFIG.address}.`,
+        `Sua personalidade é ${CONFIG.persona}. Trate a pessoa sempre como ${CONFIG.address}.`,
+        "Responda sempre em português do Brasil, de forma curta e natural para ser falada: 2 a 4 frases, sem emojis e sem markdown.",
+        "Você conhece o seguinte Second Brain e deve usar esse contexto para personalizar todas as respostas:",
+        grouped || "Ainda não há notas no Second Brain.",
+        "Protocolo de memória viva: se o usuário revelar algo novo e duradouro, TERMINE a resposta com uma linha no formato EXATO [[SAVE:area|titulo|texto]].",
+        "area deve ser uma destas: metas, trabalho, projetos, financas, aprendizado, saude, relacoes, meta.",
+        "Use essa linha somente quando houver algo realmente novo. Se já existir nota com esse título, ela será atualizada; caso contrário, será criada."
+      ].join("\n\n");
+    }
+
+    function chooseVoice() {
+      const ptVoices = speechVoices.filter((voice) => /^pt(-|_)?BR/i.test(voice.lang) || /^pt/i.test(voice.lang));
+      if (!ptVoices.length) return speechVoices[0] || null;
+      const feminineHints = /female|femin|mulher|woman|maria|ana|luciana|camila|leticia|helena/i;
+      const masculineHints = /male|masc|homem|daniel|felipe|carlos|jorge|ricardo|antonio/i;
+      const hints = CONFIG.voiceGender === "feminina" ? feminineHints : masculineHints;
+      return ptVoices.find((voice) => hints.test(voice.name)) || ptVoices[0];
+    }
+
+    function speak(text, after = null) {
+      if (!("speechSynthesis" in window)) {
+        busy = false;
+        if (after) after();
+        return;
+      }
+      window.speechSynthesis.cancel();
+      busy = true;
+      setStatus("FALANDO · TRANSMISSÃO DE VOZ", "speaking");
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "pt-BR";
+      utterance.rate = .96;
+      utterance.pitch = .82;
+      const voice = chooseVoice();
+      if (voice) utterance.voice = voice;
+      utterance.onend = () => {
+        busy = false;
+        if (systemActive) setStatus(wakeDetected ? "AGUARDANDO COMANDO" : "OCIOSO · DIGA “EI JARVIS”", wakeDetected ? "listening" : "idle");
+        if (after) after();
+      };
+      utterance.onerror = () => {
+        busy = false;
+        if (after) after();
+      };
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function stopSpeaking() {
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+      busy = false;
+      setStatus(systemActive ? "OCIOSO · DIGA “EI JARVIS”" : "AGUARDANDO ATIVAÇÃO", "idle");
+    }
+
+    function setupVoices() {
+      if (!("speechSynthesis" in window)) return;
+      speechVoices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => { speechVoices = window.speechSynthesis.getVoices(); };
+    }
+
+    function createRecognition() {
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Recognition) {
+        showToast("Seu navegador não oferece reconhecimento de voz. Use o campo de texto.");
+        setStatus("VOZ INDISPONÍVEL · USE O CAMPO DE TEXTO", "idle");
+        return null;
+      }
+      const instance = new Recognition();
+      instance.lang = "pt-BR";
+      instance.continuous = true;
+      instance.interimResults = false;
+      instance.onstart = () => {
+        if (!busy) setStatus(wakeDetected ? "OUVINDO · FALE AGORA" : "OUVINDO · DIGA “EI JARVIS”", "listening");
+      };
+      instance.onresult = (event) => {
+        if (busy) return;
+        const result = event.results[event.results.length - 1];
+        if (!result || !result[0]) return;
+        handleVoiceText(result[0].transcript.trim());
+      };
+      instance.onerror = (event) => {
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          const message = "Não consegui acessar o microfone. Permita o microfone no navegador e tente novamente.";
+          setStatus("MICROFONE NEGADO · PERMISSÃO NECESSÁRIA", "idle");
+          showToast(message);
+          setLastAssistant(message);
+          speak(message);
+        } else if (event.error !== "aborted" && event.error !== "no-speech") {
+          showToast(`Falha no reconhecimento de voz: ${event.error}`);
+        }
+      };
+      instance.onend = () => {
+        if (systemActive && !busy) window.setTimeout(startRecognition, 350);
+      };
+      return instance;
+    }
+
+    function startRecognition() {
+      if (!systemActive || busy) return;
+      if (!recognition) recognition = createRecognition();
+      if (!recognition) return;
+      try { recognition.start(); } catch (error) {
+        if (!String(error.message || error).toLowerCase().includes("already")) {
+          window.setTimeout(() => { if (!busy) startRecognition(); }, 600);
+        }
+      }
+    }
+
+    function stopRecognition() {
+      if (!recognition) return;
+      try { recognition.stop(); } catch (error) {}
+    }
+
+    function armListening() {
+      wakeDetected = true;
+      setStatus("OUVINDO · FALE AGORA", "listening");
+      startRecognition();
+    }
+
+    function handleVoiceText(transcript) {
+      if (!transcript || busy) return;
+      const normalized = normalize(transcript);
+      const wake = normalize(CONFIG.wakeWord);
+      if (!wakeDetected) {
+        if (!normalized.includes(wake)) return;
+        wakeDetected = true;
+        const command = normalized === wake ? "" : transcript.slice(normalized.indexOf(wake) + wake.length).trim();
+        if (command) {
+          processCommand(command);
+        } else {
+          setStatus("PALAVRA DETECTADA · AGUARDANDO COMANDO", "listening");
+          speak("Sim, Eve. Estou ouvindo.", () => { wakeDetected = true; startRecognition(); });
+        }
+        return;
+      }
+      processCommand(transcript);
+    }
+
+    function cleanResponse(text) {
+      return text
+        .replace(/\[\[SAVE:[\s\S]*?\]\]/g, "")
+        .replace(/[*_#`]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function applyMemorySaves(rawText) {
+      const regex = /\[\[SAVE:([a-z_]+)\|([^|]+)\|([\s\S]+?)\]\]/g;
+      let match;
+      let savedId = "";
+      while ((match = regex.exec(rawText)) !== null) {
+        const area = match[1].toLowerCase();
+        const title = match[2].trim();
+        const body = match[3].trim();
+        if (!AREA[area] || !title || !body) continue;
+        const existing = notes.find((note) => note.title.toLowerCase() === title.toLowerCase());
+        if (existing) {
+          existing.area = area;
+          existing.body = body;
+          savedId = existing.id;
+        } else {
+          savedId = `nota-${Date.now()}`;
+          notes.push({ id: savedId, area, title, body });
+        }
+      }
+      if (savedId) {
+        persistAndRender();
+        flashNoteId = savedId;
+        window.setTimeout(() => {
+          renderBrain();
+          flashNoteId = "";
+        }, 30);
+        showToast("Memória viva atualizada no Second Brain.");
+      }
+    }
+
+    async function processCommand(command) {
+      if (!command || busy) return;
+      stopRecognition();
+      wakeDetected = false;
+      busy = true;
+      setLastUser(command);
+      setStatus("PENSANDO · CONSULTANDO CONTEXTO", "thinking");
+      const key = keyInput.value.trim() || localStorage.getItem("anthropic_key") || "";
+      if (!key) {
+        const message = "Eve, preciso da sua chave da API do Claude. Cole-a no campo no topo e salve para continuarmos.";
+        setLastAssistant(message);
+        setStatus("CHAVE NECESSÁRIA", "idle");
+        speak(message, () => { busy = false; });
+        return;
+      }
+
+      history.push({ role: "user", content: command });
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true",
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({
+            model: CONFIG.model,
+            max_tokens: 400,
+            system: buildSystemPrompt(),
+            messages: history
+          })
+        });
+        if (!response.ok) {
+          const message = `A API do Claude retornou um erro HTTP ${response.status}. Verifique sua chave e tente novamente.`;
+          history.pop();
+          throw new Error(message);
+        }
+        const data = await response.json();
+        const rawAnswer = data && data.content && data.content[0] && data.content[0].text ? data.content[0].text : "";
+        if (!rawAnswer.trim()) throw new Error("O Claude não retornou uma resposta. Tente novamente.");
+        applyMemorySaves(rawAnswer);
+        const answer = cleanResponse(rawAnswer) || "Não encontrei uma resposta para isso.";
+        history.push({ role: "assistant", content: rawAnswer });
+        setLastAssistant(answer);
+        speak(answer, () => {
+          busy = false;
+          startRecognition();
+        });
+      } catch (error) {
+        const message = error instanceof TypeError
+          ? "Não consegui conectar ao Claude. Confira sua internet e tente novamente."
+          : (error.message || "Aconteceu um erro ao consultar o Claude.");
+        setLastAssistant(message);
+        setStatus("ERRO · TRANSMISSÃO INTERROMPIDA", "idle");
+        speak(message, () => {
+          busy = false;
+          startRecognition();
+        });
+      }
+    }
+
+    function curvePoint(a, c, b, t) {
+      const one = 1 - t;
+      return {
+        x: one * one * a.x + 2 * one * t * c.x + t * t * b.x,
+        y: one * one * a.y + 2 * one * t * c.y + t * t * b.y
+      };
+    }
+
+    function renderBrain() {
+      const width = 1000;
+      const height = 540;
+      const center = { x: 500, y: 270 };
+      const noteMap = new Map(notes.map((note) => [note.id, note]));
+      const connections = new Map(notes.map((note) => [note.id, 0]));
+      REL.forEach(([a, b]) => {
+        if (connections.has(a) && connections.has(b)) {
+          connections.set(a, connections.get(a) + 1);
+          connections.set(b, connections.get(b) + 1);
+        }
+      });
+      const positions = new Map();
+      const radiusX = Math.min(390, 220 + notes.length * 16);
+      const radiusY = Math.min(190, 120 + notes.length * 9);
+      notes.forEach((note, index) => {
+        const angle = -Math.PI / 2 + (Math.PI * 2 * index / Math.max(notes.length, 1));
+        positions.set(note.id, { x: center.x + Math.cos(angle) * radiusX, y: center.y + Math.sin(angle) * radiusY });
+      });
+      const edgeMarkup = [];
+      graphEdges = [];
+      REL.forEach(([from, to], index) => {
+        const a = positions.get(from);
+        const b = positions.get(to);
+        if (!a || !b) return;
+        const c = {
+          x: center.x + (a.x + b.x - center.x * 2) * .35,
+          y: center.y + (a.y + b.y - center.y * 2) * .35
+        };
+        const gradientId = `edge-gradient-${index}`;
+        graphEdges.push({ a, b, c });
+        edgeMarkup.push(`<path d="M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}" fill="none" stroke="url(#${gradientId})" stroke-width="1.6" stroke-dasharray="5 10" opacity=".62"><animate attributeName="stroke-dashoffset" from="0" to="-60" dur="${4 + index % 4}s" repeatCount="indefinite"/></path>`);
+      });
+      const radialMarkup = notes.map((note) => {
+        const point = positions.get(note.id);
+        return `<line x1="${center.x}" y1="${center.y}" x2="${point.x}" y2="${point.y}" stroke="${AREA[note.area]?.color || AREA.meta.color}" stroke-width="1" opacity=".22"/>`;
+      }).join("");
+      const nodeMarkup = notes.map((note, index) => {
+        const point = positions.get(note.id);
+        const color = AREA[note.area]?.color || AREA.meta.color;
+        const connectionsCount = connections.get(note.id) || 0;
+        const radius = 13 + Math.min(connectionsCount, 5) * 2.2;
+        const delay = (index * -.35).toFixed(2);
+        const selectedClass = flashNoteId === note.id ? " node-flash" : "";
+        return `<g class="brain-node${selectedClass}" data-node-id="${escapeHtml(note.id)}" transform="translate(${point.x} ${point.y})">
+          <circle class="node-ring" r="${radius + 9}" stroke="${color}" stroke-width="1.5" style="animation-delay:${delay}s"/>
+          <circle class="node-core" r="${radius}" fill="${color}" fill-opacity=".85" stroke="${color}" stroke-width="1"/>
+          <circle r="${Math.max(2, radius * .23)}" fill="#fff" fill-opacity=".42"/>
+          <text class="node-label" y="${radius + 22}">${escapeHtml(note.title)}</text>
+          <text class="node-area" y="${radius + 36}">${escapeHtml(AREA[note.area]?.label || "Você")}</text>
+        </g>`;
+      }).join("");
+      const gradients = REL.map((_, index) => `<linearGradient id="edge-gradient-${index}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b7cff"/><stop offset="1" stop-color="#2dd4ff"/></linearGradient>`).join("");
+      const pulseMarkup = Array.from({ length: 12 }, (_, index) => `<circle id="synapse-${index}" r="${index % 3 === 0 ? 3.2 : 2.2}" fill="#fff" opacity=".75" filter="url(#glow)"/>`).join("");
+      const svgContent = `
+        <defs>
+          ${gradients}
+          <radialGradient id="core-gradient"><stop offset="0" stop-color="#e8dfff"/><stop offset=".42" stop-color="#8b7cff"/><stop offset="1" stop-color="#332b86"/></radialGradient>
+          <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="${width}" height="${height}" fill="transparent"/>
+        ${edgeMarkup.join("")}
+        ${radialMarkup}
+        <circle cx="${center.x}" cy="${center.y}" r="44" fill="url(#core-gradient)" opacity=".95" filter="url(#glow)"/>
+        <circle cx="${center.x}" cy="${center.y}" r="58" fill="none" stroke="#8b7cff" stroke-opacity=".25"><animate attributeName="r" values="52;68;52" dur="3.1s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;.1;.5" dur="3.1s" repeatCount="indefinite"/></circle>
+        <text x="${center.x}" y="${center.y + 11}" text-anchor="middle" font-size="27">🧠</text>
+        ${pulseMarkup}
+        ${nodeMarkup}
+      `;
+      brainCanvas.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Grafo neural com ${notes.length} notas">${svgContent}</svg>`;
+      brainCount.textContent = `${notes.length} notas · ${new Set(notes.map((note) => note.area)).size} áreas`;
+      const presentAreas = [...new Set(notes.map((note) => note.area))];
+      legendItems.innerHTML = presentAreas.map((area) => `<span class="legend-item"><i class="legend-dot" style="background:${AREA[area]?.color || AREA.meta.color}"></i>${escapeHtml(AREA[area]?.label || area)}</span>`).join("");
+      pulseEpoch = performance.now();
+      if (!animationFrame) animateSynapses();
+    }
+
+    function animateSynapses(now = performance.now()) {
+      if (!graphEdges.length) {
+        animationFrame = 0;
+        return;
+      }
+      const elapsed = now - pulseEpoch;
+      for (let index = 0; index < 12; index += 1) {
+        const duration = 3200 + (index % 4) * 700;
+        const progress = ((elapsed + index * 470) % duration) / duration;
+        const edge = graphEdges[(Math.floor((elapsed + index * 470) / duration) + index) % graphEdges.length];
+        const point = curvePoint(edge.a, edge.c, edge.b, progress);
+        const pulse = document.getElementById(`synapse-${index}`);
+        if (pulse) {
+          pulse.setAttribute("cx", point.x.toFixed(2));
+          pulse.setAttribute("cy", point.y.toFixed(2));
+          pulse.setAttribute("opacity", (0.18 + Math.sin(progress * Math.PI) * .82).toFixed(2));
+        }
+      }
+      animationFrame = requestAnimationFrame(animateSynapses);
+    }
+
+    function fillAreaOptions() {
+      $("#noteArea").innerHTML = Object.entries(AREA).map(([key, value]) => `<option value="${key}">${escapeHtml(value.label)}</option>`).join("");
+    }
+
+    function openNote(note = null) {
+      $("#modalTitle").textContent = note ? "EDITAR NOTA" : "NOVA NOTA";
+      $("#noteId").value = note?.id || "";
+      $("#noteTitle").value = note?.title || "";
+      $("#noteArea").value = note?.area || "meta";
+      $("#noteBody").value = note?.body || "";
+      $("#deleteNoteButton").style.visibility = note ? "visible" : "hidden";
+      noteModal.classList.add("is-open");
+      $("#noteTitle").focus();
+    }
+
+    function closeNote() {
+      noteModal.classList.remove("is-open");
+      noteForm.reset();
+    }
+
+    brainCanvas.addEventListener("click", (event) => {
+      const node = event.target.closest && event.target.closest("[data-node-id]");
+      if (!node) return;
+      const note = notes.find((item) => item.id === node.dataset.nodeId);
+      if (note) openNote(note);
+    });
+
+    noteForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const id = $("#noteId").value.trim();
+      const noteData = {
+        id: id || `nota-${Date.now()}`,
+        title: $("#noteTitle").value.trim(),
+        area: $("#noteArea").value,
+        body: $("#noteBody").value.trim()
+      };
+      if (!noteData.title || !noteData.body) return;
+      const index = notes.findIndex((note) => note.id === id);
+      if (index >= 0) notes[index] = noteData;
+      else notes.push(noteData);
+      persistAndRender();
+      closeNote();
+      showToast("Nota salva no Second Brain.");
+    });
+
+    $("#deleteNoteButton").addEventListener("click", () => {
+      const id = $("#noteId").value;
+      if (!id) return closeNote();
+      notes = notes.filter((note) => note.id !== id);
+      persistAndRender();
+      closeNote();
+      showToast("Nota removida do Second Brain.");
+    });
+
+    $("#closeModalButton").addEventListener("click", closeNote);
+    noteModal.addEventListener("click", (event) => { if (event.target === noteModal) closeNote(); });
+    $("#newNoteButton").addEventListener("click", () => openNote());
+    $("#reloadBrainButton").addEventListener("click", () => {
+      notes = loadNotes();
+      renderBrain();
+      showToast("Second Brain recarregado.");
+    });
+
+    $("#saveKeyButton").addEventListener("click", () => {
+      const key = keyInput.value.trim();
+      if (!key) {
+        showToast("Cole uma chave válida antes de salvar.");
+        return;
+      }
+      localStorage.setItem("anthropic_key", key);
+      keyInput.value = "";
+      keyInput.placeholder = "Chave salva com segurança local";
+      showToast("Chave salva neste navegador.");
+    });
+
+    commandForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const command = commandInput.value.trim();
+      if (!command) return;
+      commandInput.value = "";
+      processCommand(command);
+    });
+    $("#micButton").addEventListener("click", armListening);
+    $("#stopButton").addEventListener("click", stopSpeaking);
+    $("#orb").addEventListener("click", armListening);
+
+    activateButton.addEventListener("click", () => {
+      systemActive = true;
+      activation.classList.add("is-hidden");
+      app.classList.add("is-visible");
+      const greeting = "Sistemas online. Estou ouvindo, Eve.";
+      setLastAssistant(greeting);
+      speak(greeting, () => {
+        busy = false;
+        startRecognition();
+      });
+    });
+
+    window.setTimeout(() => boot.classList.add("is-done"), 2200);
+    keyInput.placeholder = localStorage.getItem("anthropic_key") ? "Chave salva neste navegador" : "Cole sua chave aqui";
+    fillAreaOptions();
+    renderBrain();
+    setupVoices();
+  </script>
+</body>
+</html>
